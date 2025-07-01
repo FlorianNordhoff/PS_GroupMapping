@@ -1,12 +1,12 @@
 Import-Module ActiveDirectory
 Import-Module ImportExcel
 
-$excelPath = "C:\Pfad\zur\Datei.xlsx"
+$excelPath = "x"
 $data = Import-Excel -Path $excelPath
 
 # Log-Datei im selben Ordner wie Excel-Datei
 $excelFolder = Split-Path $excelPath -Parent
-$logPath = Join-Path $excelFolder "ADGroupScript_Errors.txt"
+$logPath = Join-Path $excelFolder "AD-Errors.txt"
 
 if (Test-Path $logPath) { Remove-Item $logPath }
 New-Item -Path $logPath -ItemType File -Force | Out-Null
@@ -49,7 +49,7 @@ foreach ($row in $data) {
                             -GroupCategory Security `
                             -GroupScope DomainLocal `
                             -Description $grpDesc `
-                            -Path "OU=Gruppen,DC=deinedomain,DC=local" # anpassen
+                            -Path "x"
                 Write-Host "Gruppe erstellt: $grpName"
                 $createdGroupsCount++
             } catch {
