@@ -1,10 +1,17 @@
 Import-Module ActiveDirectory
 Import-Module ImportExcel
 
-$excelPath = "x"
+$excelPath = "C:\Pfad\zur\Datei.xlsx"
 $data = Import-Excel -Path $excelPath
 
-# Präfix
+# Log-Datei im selben Ordner wie Excel-Datei
+$excelFolder = Split-Path $excelPath -Parent
+$logPath = Join-Path $excelFolder "ADGroupScript_Errors.txt"
+
+if (Test-Path $logPath) { Remove-Item $logPath }
+New-Item -Path $logPath -ItemType File -Force | Out-Null
+
+$createdGroupsCount = 0
 $prefix = "x"
 
 foreach ($row in $data) {
@@ -15,29 +22,25 @@ foreach ($row in $data) {
     $memberGrpRaw = $row."Member_Grp"
 
     $groupsToCreate = @()
-    if ($rwName) {
-        $groupsToCreate += @{ Name = $rwName; Desc = $rwDesc }
-    }
-    if ($subName) {
-        $groupsToCreate += @{ Name = $subName; Desc = $subDesc }
-    }
+    if ($rwName) { $groupsToCreate += @{ Name = $rwName; Desc = $rwDesc } }
+    if ($subName) { $groupsToCreate += @{ Name = $subName; Desc = $subDesc } }
 
     if ($groupsToCreate.Count -eq 0) {
-        Write-Warning "Zeile übersprungen – kein RW oder SUB Gruppenname vorhanden."
+        $msg = "Zeile übersprungen – kein Gruppenname vorhanden."
+        Write-Warning $msg
+        Add-Content -Path $logPath -Value $msg
         continue
     }
 
     foreach ($grp in $groupsToCreate) {
         $grpName = $grp.Name
-        $grpDesc = $grp.Desc 
+        $grpDesc = $grp.Desc
 
         if ($grpName -match "x(.+?)_RW$") {
-            $wildcard = $Matches[1]
-            $grpDesc = "Members of this group have Modify permission on x${wildcard} _RW"
+            $grpDesc = "Modify permission on x$($Matches[1]) _RW"
         }
         elseif ($grpName -match "KSPDaten_(R_BUENDL_.+?)_SUB$") {
-            $subPart = $Matches[1]
-            $grpDesc = "Members of this group have List permission to subfolders up to $subPart _SUB"
+            $grpDesc = "List permission to subfolders up to $($Matches[1]) _SUB"
         }
 
         if (-not (Get-ADGroup -Filter "Name -eq '$grpName'" -ErrorAction SilentlyContinue)) {
@@ -46,40 +49,44 @@ foreach ($row in $data) {
                             -GroupCategory Security `
                             -GroupScope DomainLocal `
                             -Description $grpDesc `
-                            -Path "x"
+                            -Path "OU=Gruppen,DC=deinedomain,DC=local" # anpassen
                 Write-Host "Gruppe erstellt: $grpName"
+                $createdGroupsCount++
             } catch {
-                Write-Warning "Fehler beim Erstellen von '$grpName': $_"
+                $msg = "Fehler beim Erstellen von '$grpName': $_"
+                Write-Warning $msg
+                Add-Content -Path $logPath -Value $msg
             }
         } else {
-            Write-Host "Gruppe bereits vorhanden: $grpName"
+            Write-Host "Gruppe vorhanden: $grpName"
         }
     }
 
-
-    #  Grp für Mitgliedschaften 
-    Write-Host "Ursprüngliche Gruppenrohwerte: '$memberGrpRaw'"
     $memberGroupNames = $memberGrpRaw -split "\s+" | Where-Object { $_.Trim() -ne "" } | ForEach-Object { "$prefix$($_.Trim())" }
-    Write-Host "Erkannte Gruppen für Mitgliedschaft: $($memberGroupNames -join ', ')"
 
     $validMemberGroups = foreach ($gName in $memberGroupNames) {
         if (Get-ADGroup -Identity $gName -ErrorAction SilentlyContinue) {
             $gName
         } else {
-            Write-Warning "Gruppe nicht gefunden: $gName"
+            $msg = "Gruppe nicht gefunden: $gName"
+            Write-Warning $msg
+            Add-Content -Path $logPath -Value $msg
         }
     }
 
-    # Mitgliedschaften hinzufügen
     foreach ($targetGroup in $groupsToCreate) {
         foreach ($memberName in $validMemberGroups) {
             try {
                 Add-ADGroupMember -Identity $targetGroup.Name -Members $memberName
-                Write-Host "$memberName wurde zu $($targetGroup.Name) hinzugefügt"
+                Write-Host "$memberName zu $($targetGroup.Name) hinzugefügt"
             } catch {
-                Write-Warning "Fehler beim Hinzufügen von $memberName zu $($targetGroup.Name)"
-                Write-Error $_
+                $msg = "Fehler beim Hinzufügen von $memberName zu $($targetGroup.Name): $_"
+                Write-Warning $msg
+                Add-Content -Path $logPath -Value $msg
             }
         }
     }
 }
+
+Write-Host "`nErfolgreich erstellte Gruppen: $createdGroupsCount"
+Add-Content -Path $logPath -Value "`nErfolgreich erstellte Gruppen: $createdGroupsCount"
