@@ -1,0 +1,1 @@
+Im Rahmen meiner Tätigkeit als Werkstuden wurde ich damit beauftragt einen PowerShell-Skript zu schreiben der Gruppendefinitionen aus einer Excel-Datei liest, erstellt darauf basierend neue Active Directory-Sicherheitsgruppen (RW/SUB), passt optional deren Beschreibungen an und fügt festgelegte Mitgliedsgruppen hinzu, sofern diese vorhanden sind.
