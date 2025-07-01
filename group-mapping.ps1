@@ -4,7 +4,6 @@ Import-Module ImportExcel
 $excelPath = "x"
 $data = Import-Excel -Path $excelPath
 
-# Log-Datei im selben Ordner wie Excel-Datei
 $excelFolder = Split-Path $excelPath -Parent
 $logPath = Join-Path $excelFolder "AD-Errors.txt"
 
