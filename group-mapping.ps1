@@ -5,7 +5,7 @@ $excelPath = "x"
 $data = Import-Excel -Path $excelPath
 
 # Präfix
-$prefix = "G_SGRP_CUOS_DEP_"
+$prefix = "x"
 
 foreach ($row in $data) {
     $rwName       = $row."Groupname-RW"
